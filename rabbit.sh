@@ -9,6 +9,7 @@ start_or_run () {
     else
         echo "Peril RabbitMQ container not found, creating a new one..."
         docker run -d --name peril_rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3.13-management
+        # docker run -d --name rabbitmq-stomp -p 5672:5672 -p 15672:15672 rabbitmq:3.13-management
     fi
 }
 
