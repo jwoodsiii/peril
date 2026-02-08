@@ -14,8 +14,6 @@ import (
 
 func main() {
 	godotenv.Load()
-	// Create a new package: internal/pubsub. This is where we'll put reusable code for interacting with RabbitMQ, that way we can use it in both the server and client.
-	// Create an exported PublishJSON function in the internal/pubsub package. Here's its signature:
 
 	fmt.Println("Starting Peril server...")
 	rabbitURL := os.Getenv("AMQP")
