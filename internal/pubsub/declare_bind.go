@@ -1,6 +1,8 @@
 package pubsub
 
 import (
+	"log"
+
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
@@ -37,6 +39,7 @@ func DeclareAndBind(
 	}
 	queue, err := tChan.QueueDeclare(queueName, durable, autoDelete, exclusive, noWait, args)
 	if err := tChan.QueueBind(queueName, key, exchange, noWait, args); err != nil {
+		log.Printf("Error binding queue: %v", err)
 		return nil, amqp.Queue{}, err
 	}
 	return tChan, queue, nil

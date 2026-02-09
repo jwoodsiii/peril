@@ -26,6 +26,12 @@ func main() {
 		log.Fatalf("Error: %v connecting to rabbitq", err)
 	}
 	defer conn.Close()
+
+	rChan, err := conn.Channel()
+	if err != nil {
+		log.Fatalf("Error opening channel for connection: %v", err)
+	}
+
 	fmt.Println("Connected to Peril server...")
 	uName, err := gamelogic.ClientWelcome()
 	if err != nil {
@@ -35,15 +41,14 @@ func main() {
 
 	state := gamelogic.NewGameState(uName)
 
-	pubsub.SubscribeJSON(conn, routing.ExchangePerilDirect, fmt.Sprintf("%s.%s", routing.PauseKey, uName), routing.PauseKey, pubsub.Transient, handlerPause(state))
+	if err := pubsub.SubscribeJSON(conn, routing.ExchangePerilDirect, fmt.Sprintf("%s.%s", routing.PauseKey, uName), routing.PauseKey, pubsub.Transient, HandlerPause(state)); err != nil {
+		log.Fatalf("could not subscribe to pause: %v", err)
+	}
 
-	// In the cmd/client package's main function, after creating the game state, replace your previous DeclareAndBind call with pubsub.SubscribeJSON. Use the following parameters:
-	// The connection
-	// The direct exchange (constant can be found in internal/routing)
-	// A queue named pause.username where username is the username of the player
-	// The routing key pause (constant can be found in internal/routing)
-	// Transient queue type
-	// The new handler we just created.
+	// each client needs to subscribe to moves from other players
+	if err := pubsub.SubscribeJSON(conn, routing.ExchangePerilTopic, fmt.Sprintf("%s.%s", routing.ArmyMovesPrefix, state.GetUsername()), fmt.Sprintf("%s.*", routing.ArmyMovesPrefix), pubsub.Transient, HandlerMove(state)); err != nil {
+		log.Fatalf("could not subscribe to army moves: %v", err)
+	}
 
 	for loop := true; loop; {
 		input := gamelogic.GetInput()
@@ -75,7 +80,14 @@ func main() {
 			default:
 				log.Printf("Invalid country input: %s", input[1])
 			}
-			state.CommandMove(input[1:3])
+			armyMove, err := state.CommandMove(input[1:3])
+			if err != nil {
+				log.Printf("Error moving army: %v", err)
+			}
+			if err := pubsub.PublishJSON(rChan, routing.ExchangePerilTopic, fmt.Sprintf("%s.%s", routing.ArmyMovesPrefix, uName), armyMove); err != nil {
+				log.Printf("error: %v", err)
+			}
+			fmt.Printf("Moved %v units to %s\n", len(armyMove.Units), armyMove.ToLocation)
 
 		case "status":
 			state.CommandStatus()
