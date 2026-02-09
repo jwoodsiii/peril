@@ -6,17 +6,17 @@ import (
 )
 
 func (gs *GameState) CommandSpawn(words []string) error {
-	if len(words) < 3 {
+	if len(words) < 2 {
 		return errors.New("usage: spawn <location> <rank>")
 	}
 
-	locationName := words[1]
+	locationName := words[0]
 	locations := getAllLocations()
 	if _, ok := locations[Location(locationName)]; !ok {
 		return fmt.Errorf("error: %s is not a valid location", locationName)
 	}
 
-	rank := words[2]
+	rank := words[1]
 	units := getAllRanks()
 	if _, ok := units[UnitRank(rank)]; !ok {
 		return fmt.Errorf("error: %s is not a valid unit", rank)

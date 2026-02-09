@@ -53,16 +53,16 @@ func (gs *GameState) CommandMove(words []string) (ArmyMove, error) {
 	if gs.isPaused() {
 		return ArmyMove{}, errors.New("the game is paused, you can not move units")
 	}
-	if len(words) < 3 {
+	if len(words) < 2 {
 		return ArmyMove{}, errors.New("usage: move <location> <unitID> <unitID> <unitID> etc")
 	}
-	newLocation := Location(words[1])
+	newLocation := Location(words[0])
 	locations := getAllLocations()
 	if _, ok := locations[newLocation]; !ok {
 		return ArmyMove{}, fmt.Errorf("error: %s is not a valid location", newLocation)
 	}
 	unitIDs := []int{}
-	for _, word := range words[2:] {
+	for _, word := range words[1:] {
 		id := word
 		unitID, err := strconv.Atoi(id)
 		if err != nil {

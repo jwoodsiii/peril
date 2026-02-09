@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 
+	"github.com/bootdotdev/learn-pub-sub-starter/internal/gamelogic"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/pubsub"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/routing"
 	"github.com/joho/godotenv"
@@ -31,10 +32,40 @@ func main() {
 		log.Fatalf("Error opening channel for connection: %v", err)
 	}
 
-	if err := pubsub.PublishJSON(rChan, routing.ExchangePerilDirect, routing.PauseKey, routing.PlayingState{IsPaused: true}); err != nil {
-		log.Printf("could not publish time: %v", err)
-	}
 	fmt.Println("Pause message sent!")
+
+	gamelogic.PrintServerHelp()
+
+	pubsub.DeclareAndBind(conn, routing.ExchangePerilTopic, fmt.Sprintf("%s", routing.GameLogSlug), routing.GameLogSlug, pubsub.Durable)
+
+	// 	It should be a durable queue named game_logs.
+	// The routing key should be game_logs.*. We'll go into detail on the routing key later.
+	// Restart the server.
+
+	for loop := true; loop; {
+		input := gamelogic.GetInput()
+		if input == nil {
+			continue
+		}
+		firstWord := input[0]
+		switch firstWord {
+		case "pause":
+			log.Printf("Sending pause message")
+			if err := pubsub.PublishJSON(rChan, routing.ExchangePerilDirect, routing.PauseKey, routing.PlayingState{IsPaused: true}); err != nil {
+				log.Printf("could not publish time: %v", err)
+			}
+		case "resume":
+			log.Printf("Sending resume message...")
+			if err := pubsub.PublishJSON(rChan, routing.ExchangePerilDirect, routing.PauseKey, routing.PlayingState{IsPaused: false}); err != nil {
+				log.Printf("could not publish time: %v", err)
+			}
+		case "quit":
+			log.Printf("Exiting...\n")
+			loop = false
+		default:
+			fmt.Println("Invalid command")
+		}
+	}
 
 	//wait for ctrl+c
 	signalChan := make(chan os.Signal, 1)
