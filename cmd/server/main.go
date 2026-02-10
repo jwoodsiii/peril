@@ -36,7 +36,7 @@ func main() {
 
 	gamelogic.PrintServerHelp()
 
-	pubsub.DeclareAndBind(conn, routing.ExchangePerilTopic, fmt.Sprintf("%s", routing.GameLogSlug), routing.GameLogSlug, pubsub.Durable)
+	pubsub.DeclareAndBind(conn, routing.ExchangePerilTopic, fmt.Sprintf("%s", routing.GameLogSlug), routing.GameLogSlug, pubsub.Durable, amqp.Table{"x-dead-letter-exchange": pubsub.DLQ})
 
 	// 	It should be a durable queue named game_logs.
 	// The routing key should be game_logs.*. We'll go into detail on the routing key later.

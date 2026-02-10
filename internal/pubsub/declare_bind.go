@@ -13,12 +13,15 @@ const (
 	Transient SimpleQueueType = "transient"
 )
 
+const DLQ = "peril_dlx"
+
 func DeclareAndBind(
 	conn *amqp.Connection,
 	exchange,
 	queueName,
 	key string,
 	queueType SimpleQueueType, // an enum to represent "durable" or "transient"
+	table amqp.Table,
 ) (*amqp.Channel, amqp.Queue, error) {
 
 	tChan, err := conn.Channel()
@@ -29,7 +32,7 @@ func DeclareAndBind(
 	autoDelete := false
 	exclusive := false
 	noWait := false
-	args := amqp.Table{}
+	args := table
 	switch queueType {
 	case Durable:
 		durable = true

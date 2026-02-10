@@ -22,8 +22,9 @@ func SubscribeJSON[T any](
 	key string,
 	queueType SimpleQueueType, // an enum to represent "durable" or "transient"
 	handler func(T) AckType,
+	table amqp.Table,
 ) error {
-	channel, queue, err := DeclareAndBind(conn, exchange, queueName, key, queueType)
+	channel, queue, err := DeclareAndBind(conn, exchange, queueName, key, queueType, table)
 	if err != nil {
 		return fmt.Errorf("failed to declare and bind queue: %w", err)
 	}
