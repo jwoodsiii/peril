@@ -22,6 +22,8 @@ func handlerWar(gs *gamelogic.GameState) func(gamelogic.RecognitionOfWar) pubsub
 			return pubsub.NackDiscard
 		case gamelogic.WarOutcomeYouWon, gamelogic.WarOutcomeDraw:
 			return pubsub.Ack
+		case gamelogic.WarOutcomeOpponentWon:
+			return pubsub.Ack
 		default:
 			log.Printf("Error determining war outcome")
 			return pubsub.NackDiscard
@@ -48,8 +50,9 @@ func handlerMove(gs *gamelogic.GameState, ch *amqp.Channel) func(gamelogic.ArmyM
 		case gamelogic.MoveOutcomeMakeWar:
 			if err := pubsub.PublishJSON(ch, routing.ExchangePerilTopic, fmt.Sprintf("%s.%s", routing.WarRecognitionsPrefix, gs.GetPlayerSnap().Username), gamelogic.RecognitionOfWar{Attacker: move.Player, Defender: gs.GetPlayerSnap()}); err != nil {
 				log.Printf("Error publishing message: %v", err)
+				return pubsub.NackRequeue
 			}
-			return pubsub.NackRequeue
+			return pubsub.Ack
 		default:
 			return pubsub.NackDiscard
 		}
