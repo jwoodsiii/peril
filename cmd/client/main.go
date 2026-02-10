@@ -41,13 +41,18 @@ func main() {
 
 	state := gamelogic.NewGameState(uName)
 
-	if err := pubsub.SubscribeJSON(conn, routing.ExchangePerilDirect, fmt.Sprintf("%s.%s", routing.PauseKey, uName), routing.PauseKey, pubsub.Transient, HandlerPause(state), amqp.Table{"x-dead-letter-exchange": pubsub.DLQ}); err != nil {
+	if err := pubsub.SubscribeJSON(conn, routing.ExchangePerilDirect, fmt.Sprintf("%s.%s", routing.PauseKey, uName), routing.PauseKey, pubsub.Transient, handlerPause(state), amqp.Table{"x-dead-letter-exchange": pubsub.DLQ}); err != nil {
 		log.Fatalf("could not subscribe to pause: %v", err)
 	}
 
 	// each client needs to subscribe to moves from other players
-	if err := pubsub.SubscribeJSON(conn, routing.ExchangePerilTopic, fmt.Sprintf("%s.%s", routing.ArmyMovesPrefix, state.GetUsername()), fmt.Sprintf("%s.*", routing.ArmyMovesPrefix), pubsub.Transient, HandlerMove(state), amqp.Table{"x-dead-letter-exchange": pubsub.DLQ}); err != nil {
+	if err := pubsub.SubscribeJSON(conn, routing.ExchangePerilTopic, fmt.Sprintf("%s.%s", routing.ArmyMovesPrefix, state.GetUsername()), fmt.Sprintf("%s.*", routing.ArmyMovesPrefix), pubsub.Transient, handlerMove(state, rChan), amqp.Table{"x-dead-letter-exchange": pubsub.DLQ}); err != nil {
 		log.Fatalf("could not subscribe to army moves: %v", err)
+	}
+
+	// we need a queue to handle war notifications and outcomes
+	if err := pubsub.SubscribeJSON(conn, routing.ExchangePerilTopic, "war", fmt.Sprintf("%s.*", routing.WarRecognitionsPrefix), pubsub.Durable, handlerWar(state), amqp.Table{"x-dead-letter-exchange": pubsub.DLQ}); err != nil {
+		log.Fatalf("could not subscribe to war notifications: %v", err)
 	}
 
 	for loop := true; loop; {
