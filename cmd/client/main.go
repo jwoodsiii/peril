@@ -51,7 +51,7 @@ func main() {
 	}
 
 	// we need a queue to handle war notifications and outcomes
-	if err := pubsub.SubscribeJSON(conn, routing.ExchangePerilTopic, "war", fmt.Sprintf("%s.*", routing.WarRecognitionsPrefix), pubsub.Durable, handlerWar(state), amqp.Table{"x-dead-letter-exchange": pubsub.DLQ}); err != nil {
+	if err := pubsub.SubscribeJSON(conn, routing.ExchangePerilTopic, "war", fmt.Sprintf("%s.*", routing.WarRecognitionsPrefix), pubsub.Durable, handlerWar(state, rChan), amqp.Table{"x-dead-letter-exchange": pubsub.DLQ}); err != nil {
 		log.Fatalf("could not subscribe to war notifications: %v", err)
 	}
 

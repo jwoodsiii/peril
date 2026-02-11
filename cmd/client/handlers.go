@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/gamelogic"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/pubsub"
@@ -11,18 +12,46 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-func handlerWar(gs *gamelogic.GameState) func(gamelogic.RecognitionOfWar) pubsub.AckType {
+func PublishGameLog(msg, aggressor string, ch *amqp.Channel) error {
+	fmt.Print("publishing game log...\n")
+	gl := routing.GameLog{CurrentTime: time.Now().UTC(), Message: msg, Username: aggressor}
+	if err := pubsub.PublishGob(ch, routing.ExchangePerilTopic, fmt.Sprintf("%s.%s", routing.GameLogSlug, aggressor), gl); err != nil {
+		log.Printf("error publishing game logs: %v", err)
+		return fmt.Errorf("Error publishing game log: %v", err)
+	}
+	return nil
+}
+
+func handlerWar(gs *gamelogic.GameState, ch *amqp.Channel) func(gamelogic.RecognitionOfWar) pubsub.AckType {
 	return func(rw gamelogic.RecognitionOfWar) pubsub.AckType {
 		defer fmt.Print("> ")
-		res, _, _ := gs.HandleWar(rw)
+		res, winner, loser := gs.HandleWar(rw)
+		var logMsg string
 		switch res {
 		case gamelogic.WarOutcomeNotInvolved:
 			return pubsub.NackRequeue
 		case gamelogic.WarOutcomeNoUnits:
 			return pubsub.NackDiscard
-		case gamelogic.WarOutcomeYouWon, gamelogic.WarOutcomeDraw:
+		case gamelogic.WarOutcomeDraw:
+			logMsg = fmt.Sprintf("A war between %s and %s resulted in a draw.", winner, loser)
+			if err := PublishGameLog(logMsg, rw.Attacker.Username, ch); err != nil {
+				log.Printf("Error publishing game log, requeueing: %v", err)
+				return pubsub.NackRequeue
+			}
+			return pubsub.Ack
+		case gamelogic.WarOutcomeYouWon:
+			logMsg = fmt.Sprintf("%s won a war against %s.", winner, loser)
+			if err := PublishGameLog(logMsg, rw.Attacker.Username, ch); err != nil {
+				log.Printf("Error publishing game log, requeueing: %v", err)
+				return pubsub.NackRequeue
+			}
 			return pubsub.Ack
 		case gamelogic.WarOutcomeOpponentWon:
+			logMsg = fmt.Sprintf("%s won a war against %s.", loser, winner)
+			if err := PublishGameLog(logMsg, rw.Attacker.Username, ch); err != nil {
+				log.Printf("Error publishing game log, requeueing: %v", err)
+				return pubsub.NackRequeue
+			}
 			return pubsub.Ack
 		default:
 			log.Printf("Error determining war outcome")

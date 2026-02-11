@@ -36,7 +36,7 @@ func main() {
 
 	gamelogic.PrintServerHelp()
 
-	pubsub.DeclareAndBind(conn, routing.ExchangePerilTopic, fmt.Sprintf("%s", routing.GameLogSlug), routing.GameLogSlug, pubsub.Durable, amqp.Table{"x-dead-letter-exchange": pubsub.DLQ})
+	pubsub.DeclareAndBind(conn, routing.ExchangePerilTopic, fmt.Sprintf("%s", routing.GameLogSlug), fmt.Sprintf("%s.*", routing.GameLogSlug), pubsub.Durable, amqp.Table{"x-dead-letter-exchange": pubsub.DLQ})
 
 	for loop := true; loop; {
 		input := gamelogic.GetInput()
