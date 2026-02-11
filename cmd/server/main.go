@@ -36,7 +36,9 @@ func main() {
 
 	gamelogic.PrintServerHelp()
 
-	pubsub.DeclareAndBind(conn, routing.ExchangePerilTopic, fmt.Sprintf("%s", routing.GameLogSlug), fmt.Sprintf("%s.*", routing.GameLogSlug), pubsub.Durable, amqp.Table{"x-dead-letter-exchange": pubsub.DLQ})
+	if err := pubsub.SubscribeGob(conn, routing.ExchangePerilTopic, fmt.Sprintf("%s", routing.GameLogSlug), fmt.Sprintf("%s.*", routing.GameLogSlug), pubsub.Durable, handlerLogs(), amqp.Table{"x-dead-letter-exchange": pubsub.DLQ}); err != nil {
+		log.Fatalf("could not subscribe to game_logs: %v", err)
+	}
 
 	for loop := true; loop; {
 		input := gamelogic.GetInput()

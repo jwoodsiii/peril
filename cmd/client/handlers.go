@@ -47,7 +47,7 @@ func handlerWar(gs *gamelogic.GameState, ch *amqp.Channel) func(gamelogic.Recogn
 			}
 			return pubsub.Ack
 		case gamelogic.WarOutcomeOpponentWon:
-			logMsg = fmt.Sprintf("%s won a war against %s.", loser, winner)
+			logMsg = fmt.Sprintf("%s won a war against %s.", winner, loser)
 			if err := PublishGameLog(logMsg, rw.Attacker.Username, ch); err != nil {
 				log.Printf("Error publishing game log, requeueing: %v", err)
 				return pubsub.NackRequeue
