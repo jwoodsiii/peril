@@ -5,6 +5,8 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strconv"
+	"time"
 
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/gamelogic"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/pubsub"
@@ -80,7 +82,7 @@ func main() {
 			}
 		case "move":
 			switch input[1] {
-			case "americas", " europe", "africa", " asia", "antarctica", "australia":
+			case "americas", "europe", "africa", "asia", "antarctica", "australia":
 				continue
 			default:
 				log.Printf("Invalid country input: %s", input[1])
@@ -99,7 +101,20 @@ func main() {
 		case "help":
 			gamelogic.PrintClientHelp()
 		case "spam":
-			log.Printf("Spamming not allowed yet!")
+			if len(input) < 2 {
+				log.Fatalf("usage: spam <number>")
+			}
+			lmt, err := strconv.Atoi(input[1])
+			if err != nil {
+				log.Fatalf("Failed to convert input to number: %v", err)
+			}
+			log.Printf("spam outbound...")
+			for _ = range lmt {
+				msg := gamelogic.GetMaliciousLog()
+				if err := pubsub.PublishGob(rChan, routing.ExchangePerilTopic, fmt.Sprintf("%s.%s", routing.GameLogSlug, uName), routing.GameLog{CurrentTime: time.Now().UTC(), Message: msg, Username: uName}); err != nil {
+					log.Printf("error spamming: %v", err)
+				}
+			}
 		case "quit":
 			gamelogic.PrintQuit()
 			loop = false

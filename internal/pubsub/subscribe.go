@@ -33,39 +33,6 @@ func SubscribeGob[T any](
 		err := decoder.Decode(&target)
 		return target, err
 	})
-	channel, queue, err := DeclareAndBind(conn, exchange, queueName, key, queueType, table)
-	if err != nil {
-		return fmt.Errorf("failed to declare and bind queue: %w", err)
-	}
-	delivery, err := channel.Consume(queue.Name, "", false, false, false, false, nil)
-	if err != nil {
-		return fmt.Errorf("failed to consume queue: %w", err)
-	}
-	go func() {
-		for delivery := range delivery {
-			var message T
-			var out bytes.Buffer
-			out.Write(delivery.Body)
-			if err := gob.NewDecoder(&out).Decode(&message); err != nil {
-				fmt.Printf("failed to unmarshal message: %v\n", err)
-				delivery.Nack(false, false)
-				continue
-			}
-			ack := handler(message)
-			switch ack {
-			case Ack:
-				fmt.Print("Message Ack\n")
-				delivery.Ack(false)
-			case NackRequeue:
-				fmt.Print("Message Nack requeue\n")
-				delivery.Nack(false, true)
-			case NackDiscard:
-				fmt.Print("Message Nack discard\n")
-				delivery.Nack(false, false)
-			}
-		}
-	}()
-	return nil
 }
 
 func SubscribeJSON[T any](
@@ -98,6 +65,8 @@ func subscribe[T any](
 	if err != nil {
 		return fmt.Errorf("could not declare and bind queue: %v", err)
 	}
+	// updating prefetch limit to enable horizontal scaling
+	ch.Qos(10, 0, false)
 	msgs, err := ch.Consume(
 		queue.Name, // queue
 		"",         // consumer
